@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, jsonify
 import requests
+import json
 
 app = Flask(__name__)
 
-# GANTI DENGAN URL APPS SCRIPT ANDA
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/XXXX/exec"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2RDPT2z9XIwjMcC12a5SOdmhFvUiJygtKgVLArmW91QelkB7sSEmXcgO_hJmkP6CxGg/exec"
 
+session = requests.Session()
 
 @app.route("/")
 def index():
@@ -15,36 +16,41 @@ def index():
 @app.route("/scan", methods=["POST"])
 def scan():
 
-    data = request.get_json()
-
-    ticket = data.get("ticket")
-
-    if not ticket:
-        return jsonify({
-            "success": False,
-            "message": "Ticket kosong"
-        })
+    ticket = request.json.get("ticket","").strip()
 
     try:
 
-        r = requests.get(
+        response = session.get(
             APPS_SCRIPT_URL,
             params={
-                "action": "checkin",
-                "ticket": ticket
+                "action":"checkin",
+                "ticket":ticket
             },
-            timeout=10
+            headers={
+                "Accept":"application/json"
+            },
+            allow_redirects=True,
+            timeout=20
         )
 
-        return jsonify(r.json())
+        print("=" * 60)
+        print("STATUS :", response.status_code)
+        print("URL    :", response.url)
+        print("TYPE   :", response.headers.get("Content-Type"))
+        print("BODY   :")
+        print(response.text)
+        print("=" * 60)
+
+        data = json.loads(response.text)
+
+        return jsonify(data)
 
     except Exception as e:
 
         return jsonify({
-            "success": False,
-            "message": str(e)
+            "success":False,
+            "message":str(e)
         })
-
 
 @app.route("/dashboard")
 def dashboard():
@@ -68,4 +74,4 @@ def dashboard():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
